@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="pt">
+<head>
+    <meta charset="utf-8">
+    <title>TaskReminder</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+
+    <div class="logo-app">
+        <img src="{{ url_for('static', filename='icon.png') }}" alt="TaskReminder Logo">
+    </div>
+
+    <div id="toast" class="toast" style="display:none;"></div>
+
+    <script>
+    function mostrarToast(msg) {
+        const toast = document.getElementById("toast");
+        toast.innerText = msg;
+        toast.style.display = "block";
+        setTimeout(() => {
+            toast.style.display = "none";
+        }, 3000);
+    }
+
+    {% with mensagens = get_flashed_messages() %}
+        {% if mensagens %}
+            window.onload = () => {
+                {% for m in mensagens %}
+                    mostrarToast("{{ m }}");
+                {% endfor %}
+            }
+        {% endif %}
+    {% endwith %}
+    </script>
+
+    <form method="POST" action="{{ url_for('adicionar') }}">
+        <input name="titulo" placeholder="Título" required>
+        <input name="descricao" placeholder="Descrição">
+        <input type="date" name="data" required>
+        <select name="prioridade">
+            <option>Alta</option>
+            <option>Média</option>
+            <option>Baixa</option>
+        </select>
+        <button type="submit">Adicionar</button>
+    </form>
+
+    <form method="GET" action="{{ url_for('index') }}" class="filtros-container">
+        <div>
+            <label for="prioridade">Filtrar por prioridade:</label>
+            <select name="prioridade" id="prioridade">
+                <option value="" {% if not filtro %}selected{% endif %}>Todas</option>
+                <option value="Alta" {% if filtro == 'Alta' %}selected{% endif %}>Alta</option>
+                <option value="Média" {% if filtro == 'Média' %}selected{% endif %}>Média</option>
+                <option value="Baixa" {% if filtro == 'Baixa' %}selected{% endif %}>Baixa</option>
+            </select>
+        </div>
+
+        <div>
+            <label for="status">Filtrar por data:</label>
+            <select name="status" id="status">
+                <option value="" {% if not status %}selected{% endif %}>Todas</option>
+                <option value="futuras" {% if status == 'futuras' %}selected{% endif %}>Futuras</option>
+                <option value="hoje" {% if status == 'hoje' %}selected{% endif %}>Hoje</option>
+                <option value="vencidas" {% if status == 'vencidas' %}selected{% endif %}>Vencidas</option>
+            </select>
+        </div>
+
+        <button type="submit">Filtrar</button>
+    </form>
+
+    <ul>
+    {% for tarefa in tarefas %}
+        <li class="{% if tarefa.id in alerta_ids %}tarefa-alerta {% endif %}{% if tarefa.data_formatada < hoje_formatado %}tarefa-vencida{% endif %}">
+            <div class="cabecalho-tarefa" id="view-{{ tarefa.id }}">
+                <div class="info-esquerda">
+                    <span class="titulo">{{ tarefa.titulo }}</span>
+                    <span class="data">{{ tarefa.data_formatada }}</span>
+                    <span class="prioridade {{ tarefa.prioridade|lower }}">[{{ tarefa.prioridade }}]</span>
+                    {% if tarefa.id in alerta_ids %}
+                        <em style="color: red;">⚠️ Tarefa próxima!</em>
+                    {% endif %}
+                </div>
+                <div class="icones-direita">
+                    <a href="#" onclick="editarTarefa({{ tarefa.id }})" title="Editar" class="icone-editar">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <a href="{{ url_for('excluir', id=tarefa.id) }}" title="Excluir" class="icone-excluir">
+                        <i class="fas fa-trash-alt"></i>
+                    </a>
+                </div>
+            </div>
+
+            <form id="form-{{ tarefa.id }}" class="form-edicao" method="POST" action="{{ url_for('editar', id=tarefa.id) }}" style="display:none;">
+                <div class="linha-superior">
+                    <input name="titulo" value="{{ tarefa.titulo }}" required>
+                    <input name="data" type="date" value="{{ tarefa.data }}">
+                    <select name="prioridade">
+                        <option {% if tarefa.prioridade == 'Alta' %}selected{% endif %}>Alta</option>
+                        <option {% if tarefa.prioridade == 'Média' %}selected{% endif %}>Média</option>
+                        <option {% if tarefa.prioridade == 'Baixa' %}selected{% endif %}>Baixa</option>
+                    </select>
+                </div>
+                <textarea name="descricao">{{ tarefa.descricao }}</textarea>
+                <div class="botoes">
+                    <button type="submit">Salvar</button>
+                    <button type="button" onclick="cancelarEdicao({{ tarefa.id }})">Cancelar</button>
+                </div>
+            </form>
+
+            {% if tarefa.descricao %}
+            <div id="descricao-{{ tarefa.id }}" class="descricao">
+                {{ tarefa.descricao }}
+            </div>
+            {% endif %}
+        </li>
+    {% endfor %}
+    </ul>
+
+    <script>
+    function editarTarefa(id) {
+        document.getElementById("view-" + id).style.display = "none";
+        document.getElementById("form-" + id).style.display = "block";
+
+        const descricao = document.getElementById("descricao-" + id);
+        if (descricao) descricao.style.display = "none";
+    }
+
+    function cancelarEdicao(id) {
+        document.getElementById("form-" + id).style.display = "none";
+        document.getElementById("view-" + id).style.display = "flex";
+
+        const descricao = document.getElementById("descricao-" + id);
+        if (descricao) descricao.style.display = "block";
+    }
+    </script>
+
+</body>
+</html>
